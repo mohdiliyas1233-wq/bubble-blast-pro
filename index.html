@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#10172a"><title>Bubble Blast Pro</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10172a;color:#f4f7ff;font-family:system-ui,Arial;display:flex;justify-content:center;padding:12px}
+.app{width:min(100%,480px);display:flex;flex-direction:column;gap:10px}header{display:flex;justify-content:space-between;align-items:center}h1{font-size:22px;margin:0}.muted{color:#aebbd6;font-size:12px}
+.panel{background:#1b2742;border:1px solid #35496e;border-radius:18px;padding:16px;box-shadow:0 10px 28px #0004}
+.screen{display:none}.screen.active{display:block}
+.menu{min-height:76vh;display:flex;flex-direction:column;justify-content:center;gap:13px;text-align:center}
+.logo{font-size:48px}.menu h2{font-size:28px;margin:0}.menu p{margin:0 0 10px;color:#aebbd6}
+button,select{border:0;border-radius:12px;padding:13px 12px;font-weight:750;font-size:15px;background:#54d6ff;color:#0c1730;cursor:pointer}
+button.secondary{background:#293958;color:white;border:1px solid #405579}button:active{transform:scale(.98)}input[type=range]{min-width:0}
+.menu button{width:100%}.level-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}.level-tile{padding:12px 2px;font-size:14px;min-height:46px}.level-tile.done{background:#245b58;color:#eafffa}.level-tile.current{background:#54d6ff;color:#0c1730;outline:3px solid #b5f1ff}.level-tile.locked{background:#202d45;color:#71809a;border:1px solid #35496e}.level-tile{position:relative;border-radius:15px;box-shadow:inset 0 2px #ffffff22,0 3px #0003}.level-tile.done{background:linear-gradient(145deg,#238b79,#18594f)}.level-tile.current{background:linear-gradient(145deg,#7cecff,#39a9ef);box-shadow:0 0 0 3px #b5f1ff,0 5px 14px #39c6ff55}.level-tile .tile-stars{display:block;font-size:10px;line-height:1.1;color:#ffe16b;letter-spacing:-1px;margin-top:2px}.map-nav{display:flex;gap:8px;align-items:center}.map-nav button{flex:1}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.stat{background:#1b2742;border:1px solid #304366;border-radius:12px;padding:8px;text-align:center}.stat small{display:block;color:#aebbd6;font-size:11px}.stat b{font-size:17px}
+.game-wrap{background:#172441;border:1px solid #304366;border-radius:18px;padding:7px}canvas{display:block;width:100%;height:auto;aspect-ratio:420/700;border-radius:12px;touch-action:none;background:radial-gradient(ellipse at 50% 10%,#263e69,#101a31 70%)}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.controls button{padding:11px 5px;font-size:13px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0;text-align:left}.setting-row select{width:54%;background:#293958;color:white;border:1px solid #405579}
+.note{font-size:12px;color:#aebbd6;line-height:1.5}.overlay{position:fixed;inset:0;background:#07101ddd;display:none;align-items:center;justify-content:center;padding:20px;z-index:5}.dialog{width:min(100%,360px);background:#1b2742;border:1px solid #405579;border-radius:18px;padding:22px;text-align:center}.dialog button{width:100%;margin-top:8px}
+footer{text-align:center;color:#8090ae;font-size:10px}
+</style></head>
+<body><main class="app">
+<header><div><h1>🫧 Bubble Blast Pro</h1><div class="muted">50,000 levels • Offline</div></div><div style="display:flex;align-items:center;gap:7px"><label for="screenVolume" style="font-size:18px">🔊</label><input id="screenVolume" type="range" min="0" max="100" value="90" aria-label="Volume" style="width:82px;accent-color:#54d6ff"><button class="secondary" id="homeBtn" style="padding:9px 12px">⌂ Home</button></div></header>
+
+<section id="home" class="screen active panel menu" style="display:block">
+ <div class="logo">🫧💥</div><h2>Bubble Blast Pro</h2><p>Ready, aim and blast your way through 50,000 levels!</p>
+ <button id="playBtn" onclick="window.startGameNow()">▶ PLAY</button><button class="secondary" id="continueBtn">⏵ CONTINUE LEVEL</button><button class="secondary" id="levelMapBtn">🗺 LEVEL MAP</button><button class="secondary" id="settingsBtn">⚙ SETTINGS</button>
+ <div class="panel" style="padding:10px;margin-top:4px">
+  <div class="muted">YOUR PROGRESS</div>
+  <div id="homeProgress" style="font-weight:800;font-size:17px;margin-top:4px">Current level: 1 • Completed: 0</div><div id="homeCoins" style="font-weight:800;color:#ffd34e;margin-top:5px">🪙 0 coins</div>
+ </div>
+ <div class="muted">Your progress is saved automatically on this device.</div>
+</section>
+
+<section id="levelMap" class="screen panel" style="display:none">
+ <h2 style="margin-top:0">🗺 Level Map</h2>
+ <p class="note">Completed levels and your current level are unlocked. Tap a level to play it.</p>
+ <div class="map-nav"><button class="secondary" id="mapPrev">← Previous</button><b id="mapPageLabel" style="white-space:nowrap">Levels 1–100</b><button class="secondary" id="mapNext">Next →</button></div>
+ <div id="levelGrid" class="level-grid"></div>
+ <button class="secondary" id="mapBack" style="width:100%">← Back to Home</button>
+</section>
+
+<section id="settings" class="screen panel" style="display:none">
+ <h2>⚙ Settings</h2>
+ <div class="setting-row"><span>Sound effects</span><select id="soundSetting"><option value="on">On</option><option value="off">Off</option></select></div>
+ <div class="setting-row"><span>Voice / effects volume</span><select id="volumeSetting"><option value="70">Normal</option><option value="90">Loud</option><option value="100">Maximum</option></select></div>
+ <div class="setting-row"><span>Aim guide</span><select id="aimSetting"><option value="on">On</option><option value="off">Off</option></select></div>
+ <button id="settingsBack" class="secondary" style="width:100%">← Back</button>
+ <p class="note">Sound is generated inside the game. Use your phone's media volume for the final loudness.</p>
+</section>
+
+<section id="gameScreen" class="screen" style="display:none">
+ <section class="stats" style="grid-template-columns:repeat(5,1fr)"><div class="stat"><small>LEVEL</small><b id="level">1</b></div><div class="stat"><small>SCORE</small><b id="score">0</b></div><div class="stat"><small>BEST</small><b id="best">0</b></div><div class="stat"><small>BUBBLES</small><b id="ammo">25</b></div><div class="stat"><small>COINS</small><b id="gameCoins">0</b></div></section>
+ <div class="game-wrap"><canvas id="game" width="420" height="700"></canvas></div>
+ <section class="controls"><button class="secondary" id="restart">↻ Restart</button><button class="secondary" id="pause">Ⅱ Pause</button><button class="secondary" id="backHome">⌂ Menu</button></section><button class="secondary" id="buyBubbles" style="width:100%;margin-top:7px">🪙 Buy +5 bubbles • 25 coins</button>
+ <div class="panel" style="padding:10px 14px;margin-top:8px;display:flex;align-items:center;gap:10px"><span style="font-size:13px;white-space:nowrap">🔊 Volume</span><input id="gameVolume" type="range" min="0" max="100" value="90" style="width:100%;accent-color:#54d6ff"><b id="volumeValue" style="font-size:12px;min-width:34px">90%</b></div>
+ <div class="note" style="text-align:center;margin:6px">Touch and drag to aim; the dashed line shows the direction. Release to shoot. Tap NEXT to swap colours. Match 3+ bubbles; hit 💣 to blast nearby bubbles!</div>
+</section>
+<footer>Bubble Blast Pro • Version 3.8</footer></main>
+
+<div class="overlay" id="overlay"><div class="dialog"><h2 id="dialogTitle">Paused</h2><p id="dialogText"></p><button id="dialogMain">Continue</button><button id="rewardBtn" class="secondary" style="display:none;background:#ffd34e;color:#17213a">▶ Watch Ad • Earn 10 Bubbles</button><button id="dialogHome" class="secondary">Home</button></div></div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d');
+const W=420,H=700,R=16,D=34,COLS=9,START_Y=62,SHOOTER={x:210,y:640};
+const COLORS=['#ff5268','#39c6ff','#ffd34e','#7ce36b','#b28cff','#ff8fce'];
+let level=1,score=0,coins=0,unlockedLevel=1,levelStars={},best=+(localStorage.getItem('bbp_best')||0),grid=[],projectile=null,currentColor=0,nextColor=1,aim={x:210,y:250},paused=false,ended=false,won=false,shots=0,shotsRemaining=25,settings={sound:'on',volume:90,aim:'on'},audioCtx=null;
+$('best')&&($('best').textContent=best);
+function show(id){document.querySelectorAll('.screen').forEach(s=>{s.classList.remove('active');s.style.display='none'});const target=$(id);target.classList.add('active');target.style.display='block'}
+function soundTone(freq,duration,type='sine',vol=.2,endFreq=null){if(settings.sound==='off')return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();let o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime;o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,t+duration);g.gain.setValueAtTime(Math.max(.001,vol*settings.volume/100),t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration)}catch(e){}}
+function popSound(){soundTone(620,.075,'sine',.28,300)}
+function shootSound(){soundTone(520,.09,'triangle',.32,190)}
+function hitSound(){soundTone(390,.06,'sine',.24,210)}
+function bombSound(){soundTone(115,.55,'sawtooth',.8,35);setTimeout(()=>soundTone(65,.35,'triangle',.65,28),65);setTimeout(()=>soundTone(850,.13,'square',.28,220),80)}
+function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+function center(r,c){return{x:(W-(COLS-1)*D)/2+c*D+(r%2)*R,y:START_Y+r*(D*.87)}}
+function valid(r,c){return r>=0&&r<30&&c>=0&&c<COLS}
+function neighbors(r,c){return r%2===0?[[r,c-1],[r,c+1],[r-1,c-1],[r-1,c],[r+1,c-1],[r+1,c]]:[[r,c-1],[r,c+1],[r-1,c],[r-1,c+1],[r+1,c],[r+1,c+1]]}
+function activeColors(){let s=new Set();for(let row of grid)for(let v of row)if(typeof v==='number')s.add(v);return [...s]}
+function pickNeeded(rand,exclude=-1){
+ let a=activeColors();
+ if(a.length>1&&a.includes(exclude))a=a.filter(v=>v!==exclude);
+ if(!a.length)a=activeColors();
+ return a.length?a[Math.floor(rand()*a.length)]:Math.floor(rand()*Math.min(3+Math.floor((level-1)/12),6));
+}
+function makeLevel(){
+ const rand=rng(level*7919+173);grid=Array.from({length:30},()=>Array(COLS).fill(null));
+ // Gradually add rows, colours and denser layouts for a steady difficulty curve.
+ const rows=Math.min(5+Math.floor((level-1)/4),15),colors=Math.min(3+Math.floor((level-1)/10),6);
+ for(let r=0;r<rows;r++)for(let c=0;c<COLS;c++){
+  if(r>1&&rand()<Math.max(.025,.12-(Math.min(level,50)*.001)))continue;
+  grid[r][c]=Math.floor(rand()*colors);
+ }
+ // Each level has exactly one bomb tile.
+ let br=Math.min(rows-1,Math.floor(rand()*Math.min(rows,Math.max(2,rows-1)))),bc=Math.floor(rand()*COLS);
+ grid[br][bc]='bomb';
+ // Guarantee a visible mix of colours in every level, plus an opening match.
+ grid[0][2]=0;grid[0][3]=0;grid[0][4]=0;
+ const guaranteed=Math.min(colors,6);
+ for(let k=0;k<guaranteed;k++)grid[1][k]=k;
+ currentColor=pickNeeded(rand);
+ nextColor=pickNeeded(rand,currentColor);
+ projectile=null;shots=0;shotsRemaining=Math.max(18,25-Math.floor((level-1)/250));ended=false;won=false;paused=false;
+ $('level').textContent=level;$('score').textContent=score;$('overlay').style.display='none';$('pause').textContent='Ⅱ Pause';save();draw();
+}
+function getGroup(sr,sc,color){let seen=new Set(),stack=[[sr,sc]],out=[];while(stack.length){let[r,c]=stack.pop(),k=r+','+c;if(seen.has(k)||!valid(r,c)||grid[r][c]!==color)continue;seen.add(k);out.push([r,c]);for(let q of neighbors(r,c))stack.push(q)}return out}
+function dropFloating(){let seen=new Set(),stack=[];for(let c=0;c<COLS;c++)if(grid[0][c]!==null)stack.push([0,c]);while(stack.length){let[r,c]=stack.pop(),k=r+','+c;if(seen.has(k)||!valid(r,c)||grid[r][c]===null)continue;seen.add(k);for(let q of neighbors(r,c))stack.push(q)}let n=0;for(let r=0;r<30;r++)for(let c=0;c<COLS;c++)if(grid[r][c]!==null&&!seen.has(r+','+c)){grid[r][c]=null;n++}return n}
+function blast(r,c){let removed=0;for(let rr=Math.max(0,r-2);rr<=Math.min(29,r+2);rr++)for(let cc=0;cc<COLS;cc++){let p=center(rr,cc),b=center(r,c);if(grid[rr][cc]!==null&&Math.hypot(p.x-b.x,p.y-b.y)<=D*2.65){grid[rr][cc]=null;removed++}}score+=removed*15;dropFloating();bombSound();return removed}
+function attach(x,y,color){
+ let cell=null,dist=Infinity;for(let r=0;r<25;r++)for(let c=0;c<COLS;c++)if(grid[r][c]===null){let p=center(r,c),d=(p.x-x)**2+(p.y-y)**2;if(d<dist){dist=d;cell=[r,c]}}
+ if(!cell){finish(false);return}let[r,c]=cell;grid[r][c]=color;
+ // If a bubble touches a bomb, it detonates and clears roughly 10-11 nearby bubbles.
+ let bombCell=null;for(let[nr,nc]of neighbors(r,c))if(valid(nr,nc)&&grid[nr][nc]==='bomb'){bombCell=[nr,nc];break}
+ if(bombCell){grid[bombCell[0]][bombCell[1]]=null;blast(...bombCell)}
+ else{let group=getGroup(r,c,color);if(group.length>=3){for(let[a,b]of group)grid[a][b]=null;score+=group.length*10;popSound();dropFloating()}else{score+=2;hitSound()}}
+ $('score').textContent=score;if(score>best){best=score;localStorage.setItem('bbp_best',best);$('best').textContent=best}
+ if(grid.every(row=>row.every(v=>v===null))){finish(true);return}
+ for(let rr=0;rr<30;rr++)for(let cc=0;cc<COLS;cc++)if(grid[rr][cc]!==null&&center(rr,cc).y>570){finish(false);return}
+ let rand=rng(level*991+shots*31+7);currentColor=nextColor;nextColor=pickNeeded(rand,currentColor);if(shotsRemaining<=0&&!grid.every(row=>row.every(v=>v===null)))finish(false);
+}
+function finish(win){ended=true;won=win;if(win){const stars=shotsRemaining>=12?3:shotsRemaining>=5?2:1;const old=Number(levelStars[level]||0);levelStars[level]=Math.max(old,stars);if(level>=unlockedLevel)unlockedLevel=Math.min(50000,level+1);const reward=10+stars*5;coins+=reward;$('dialogText').textContent='You earned '+('★'.repeat(stars))+' ('+stars+'/3 stars) and '+reward+' coins!';}else{$('dialogText').textContent='Your shooting bubbles are finished. Retry the level or claim 10 extra bubbles.';}$('dialogTitle').textContent=win?'Level Complete!':'Game Over';$('dialogMain').textContent=win?'Next Level':'Retry';$('rewardBtn').style.display=win?'none':'block';$('overlay').style.display='flex';save()}
+function shoot(){if(paused||ended||projectile||shotsRemaining<=0)return;try{if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume()}catch(e){}let dx=aim.x-SHOOTER.x,dy=aim.y-SHOOTER.y;if(dy>-30)dy=-30;let len=Math.hypot(dx,dy)||1;projectile={x:SHOOTER.x,y:SHOOTER.y,vx:dx/len*12.5,vy:dy/len*12.5,color:currentColor};shootSound();shots++;shotsRemaining--;if($('ammo'))$('ammo').textContent=shotsRemaining}
+function update(){if(!projectile||paused||ended)return;let p=projectile;p.x+=p.vx;p.y+=p.vy;if(p.x<R){p.x=R;p.vx=Math.abs(p.vx)}if(p.x>W-R){p.x=W-R;p.vx=-Math.abs(p.vx)}let hit=p.y<R+8;for(let r=0;r<25&&!hit;r++)for(let c=0;c<COLS;c++)if(grid[r][c]!==null){let q=center(r,c);if(Math.hypot(q.x-p.x,q.y-p.y)<D-2){hit=true;break}}if(hit||p.y<START_Y-10){attach(p.x,p.y,p.color);projectile=null}}
+function bubble(x,y,color,r=R){let bomb=color==='bomb';if(bomb){ctx.save();ctx.translate(x,y);ctx.fillStyle='#242a38';ctx.strokeStyle='#ffc85b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle='#ffdf82';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(2,-r+2);ctx.quadraticCurveTo(12,-r-13,8,-r-17);ctx.stroke();ctx.fillStyle='#ffcf4a';ctx.font='bold 19px system-ui';ctx.textAlign='center';ctx.fillText('✦',0,7);ctx.restore();return}
+ let g=ctx.createRadialGradient(x-r*.35,y-r*.4,2,x,y,r*1.2);g.addColorStop(0,'#fff');g.addColorStop(.18,COLORS[color]);g.addColorStop(1,'#18233c');ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle=COLORS[color];ctx.stroke();ctx.beginPath();ctx.arc(x-r*.35,y-r*.4,r*.22,0,Math.PI*2);ctx.fillStyle='#ffffffaa';ctx.fill()}
+function draw(){ctx.clearRect(0,0,W,H);ctx.fillStyle='#ffffff12';for(let i=0;i<35;i++)ctx.fillRect((i*83)%W,(i*137)%H,2,2);ctx.setLineDash([6,7]);ctx.strokeStyle='#ff637755';ctx.beginPath();ctx.moveTo(12,590);ctx.lineTo(W-12,590);ctx.stroke();ctx.setLineDash([]);
+ for(let r=0;r<25;r++)for(let c=0;c<COLS;c++)if(grid[r][c]!==null){let p=center(r,c);bubble(p.x,p.y,grid[r][c])}
+ if(settings.aim==='on'&&!paused&&!ended&&!projectile){
+  let dx=aim.x-SHOOTER.x,dy=aim.y-SHOOTER.y;
+  // Always aim upward; keep a minimum vertical component so the guide never becomes flat.
+  if(dy>-35)dy=-35;
+  let len=Math.hypot(dx,dy)||1,vx=dx/len,vy=dy/len,x=SHOOTER.x,y=SHOOTER.y;
+  ctx.save();ctx.setLineDash([6,6]);ctx.strokeStyle='#ffffffdd';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(x,y);
+  for(let i=0;i<180;i++){
+    x+=vx*5;y+=vy*5;
+    if(x<R+2){x=R+2;vx=Math.abs(vx)}
+    if(x>W-R-2){x=W-R-2;vx=-Math.abs(vx)}
+    if(y<START_Y-5){ctx.lineTo(x,y);break}
+    ctx.lineTo(x,y);
+  }
+  ctx.stroke();ctx.restore();
+}
+ ctx.beginPath();ctx.arc(SHOOTER.x,SHOOTER.y,25,Math.PI,0);ctx.fillStyle='#31476d';ctx.fill();ctx.strokeStyle='#6684b6';ctx.stroke();bubble(SHOOTER.x,SHOOTER.y,currentColor);bubble(350,654,nextColor,11);ctx.fillStyle='#aebbd6';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('NEXT',350,678);if(projectile)bubble(projectile.x,projectile.y,projectile.color);if(paused){ctx.fillStyle='#07101a99';ctx.fillRect(0,0,W,H);ctx.fillStyle='white';ctx.font='bold 30px system-ui';ctx.fillText('PAUSED',210,350)}}
+function updateHomeProgress(){
+ const current=Math.max(1,Math.min(50000,unlockedLevel));
+ if($('homeProgress'))$('homeProgress').textContent='Current level: '+level+' • Completed: '+Math.max(0,unlockedLevel-1);
+ if($('homeCoins'))$('homeCoins').textContent='🪙 '+coins+' coins';
+ if($('gameCoins'))$('gameCoins').textContent=coins;
+}
+function save(){try{localStorage.setItem('bbp_save',JSON.stringify({level,score,best,coins,unlockedLevel,levelStars}))}catch(e){}updateHomeProgress()}
+function load(){try{let s=JSON.parse(localStorage.getItem('bbp_save')||'{}');if(s.level>=1&&s.level<=50000)level=s.level;if(Number.isFinite(s.score))score=s.score;if(Number.isFinite(s.best))best=Math.max(best,s.best);if(Number.isFinite(s.coins))coins=s.coins;if(Number.isFinite(s.unlockedLevel))unlockedLevel=Math.max(1,s.unlockedLevel);if(s.levelStars&&typeof s.levelStars==='object')levelStars=s.levelStars}catch(e){}}
+function start(){show('gameScreen');makeLevel()}
+let aimingPointer=null, swapOnRelease=false;
+function canvasPoint(e){
+ const r=canvas.getBoundingClientRect();
+ return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};
+}
+canvas.addEventListener('pointermove',e=>{
+ const pt=canvasPoint(e);
+ if(aimingPointer===e.pointerId) aim=pt;
+ else if(e.pointerType==='mouse'&&e.buttons===0) aim=pt;
+});
+canvas.addEventListener('pointerdown',e=>{
+ const pt=canvasPoint(e); aim=pt;
+ if(paused||ended||projectile)return;
+ // NEXT bubble is a separate swap target; it never fires a shot.
+ if(Math.hypot(pt.x-350,pt.y-654)<27){
+   const old=currentColor; currentColor=nextColor; nextColor=old; swapOnRelease=true; draw(); return;
+ }
+ swapOnRelease=false; aimingPointer=e.pointerId;
+ try{canvas.setPointerCapture(e.pointerId)}catch(_){}
+});
+canvas.addEventListener('pointerup',e=>{
+ if(aimingPointer!==e.pointerId)return;
+ const pt=canvasPoint(e); aim=pt; aimingPointer=null;
+ if(!swapOnRelease)shoot();
+ swapOnRelease=false; draw();
+});
+canvas.addEventListener('pointercancel',e=>{
+ if(aimingPointer===e.pointerId)aimingPointer=null;
+ swapOnRelease=false;
+});
+$('playBtn').onclick=()=>window.startGameNow();
+$('continueBtn').onclick=()=>{load();$('best').textContent=best;start()};
+let mapPage=0;
+function renderLevelMap(){
+ load();
+ const maxUnlocked=Math.max(1,Math.min(50000,unlockedLevel));
+ const maxPage=Math.floor((maxUnlocked-1)/100);
+ mapPage=Math.max(0,Math.min(mapPage,maxPage));
+ const first=mapPage*100+1,last=Math.min(50000,first+99);
+ $('mapPageLabel').textContent='Levels '+first+'–'+last;
+ $('mapPrev').disabled=mapPage===0;$('mapNext').disabled=mapPage>=maxPage;
+ $('mapPrev').style.opacity=mapPage===0?'.4':'1';$('mapNext').style.opacity=mapPage>=maxPage?'.4':'1';
+ const grid=$('levelGrid');grid.innerHTML='';
+ for(let n=first;n<=last;n++){
+  const b=document.createElement('button');b.className='level-tile '+(n<maxUnlocked?'done':n===maxUnlocked?'current':'locked');
+  b.innerHTML=n<maxUnlocked?'✓ '+n+'<span class="tile-stars">'+('★'.repeat(Number(levelStars[n]||0)))+'</span>':n===maxUnlocked?'▶ '+n+'<span class="tile-stars">NEW</span>':'🔒';
+  b.disabled=n>maxUnlocked;b.setAttribute('aria-label',n>maxUnlocked?'Locked level '+n:'Play level '+n);
+  if(n<=maxUnlocked)b.onclick=()=>{level=n;score=0;$('best').textContent=best;start()};
+  grid.appendChild(b);
+ }
+}
+$('levelMapBtn').onclick=()=>{mapPage=Math.floor((Math.max(1,level)-1)/100);renderLevelMap();show('levelMap')};
+$('mapPrev').onclick=()=>{mapPage--;renderLevelMap()};$('mapNext').onclick=()=>{mapPage++;renderLevelMap()};
+$('mapBack').onclick=()=>show('home');
+$('buyBubbles').onclick=()=>{if(coins<25){alert('You need 25 coins. Complete levels to earn coins.');return;}coins-=25;shotsRemaining+=5;$('ammo').textContent=shotsRemaining;save();alert('5 extra bubbles added!');};
+$('settingsBtn').onclick=()=>show('settings');$('settingsBack').onclick=()=>show('home');
+$('homeBtn').onclick=$('backHome').onclick=()=>{paused=false;$('overlay').style.display='none';show('home');save();updateHomeProgress()};
+$('restart').onclick=()=>makeLevel();
+$('pause').onclick=()=>{if(ended)return;paused=!paused;$('pause').textContent=paused?'▶ Resume':'Ⅱ Pause';draw()};
+$('dialogMain').onclick=()=>{if(won){level=level>=50000?1:level+1;makeLevel()}else makeLevel()};
+$('rewardBtn').onclick=()=>{ // Demo reward: real rewarded ads require an ad-network SDK and app ID.
+ shotsRemaining+=10;$('ammo').textContent=shotsRemaining;ended=false;won=false;$('overlay').style.display='none';$('rewardBtn').style.display='none';save();draw();
+ alert('Demo reward: 10 extra bubbles added. A real ad is not connected yet.');
+};
+window.startGameNow=()=>{level=1;score=0;start();};
+function setGameVolume(v){settings.volume=Math.max(0,Math.min(100,+v));$('gameVolume').value=settings.volume;$('screenVolume').value=settings.volume;$('volumeValue').textContent=settings.volume+'%';$('volumeSetting').value=String(settings.volume>=95?100:settings.volume>=85?90:70)}
+$('gameVolume').oninput=e=>setGameVolume(e.target.value);
+$('screenVolume').oninput=e=>setGameVolume(e.target.value);
+
+$('dialogHome').onclick=()=>{$('overlay').style.display='none';show('home');save();updateHomeProgress()};
+$('soundSetting').onchange=e=>settings.sound=e.target.value;
+$('volumeSetting').onchange=e=>setGameVolume(e.target.value);
+$('aimSetting').onchange=e=>settings.aim=e.target.value;
+window.addEventListener('keydown',e=>{if(e.key===' '){e.preventDefault();shoot()}if(e.key==='Escape')$('pause').click()});
+window.addEventListener('error',e=>{try{$('dialogTitle').textContent='Game error';$('dialogText').textContent='Please close and reopen this HTML file in Chrome. '+(e.message||'');$('dialogMain').textContent='Reload level';$('overlay').style.display='flex'}catch(_){}});load();$('best').textContent=best;updateHomeProgress();setInterval(save,1500);window.addEventListener('beforeunload',save);
+makeLevel();show('home');function loop(){update();draw();requestAnimationFrame(loop)}loop();
+})();
+</script></body></html>
